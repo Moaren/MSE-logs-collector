@@ -1,25 +1,30 @@
 services:
-
   web-service:
     image: nginx
     volumes:
-    - ./nginx-conf:/etc/nginx/templates
-    - ./logs/access.log:/var/log/nginx/access.log
-    - letsencrypt:/etc/letsencrypt
-    - ./webdata:/usr/share/nginx/html
+      - ./nginx-conf:/etc/nginx/templates
+      - ./logs/access.log:/var/log/nginx/access.log
+      - letsencrypt:/etc/letsencrypt
+      - ./webdata:/usr/share/nginx/html
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"
+      - "4443:443"
     env_file: "./env/nginx.env"
     depends_on:
       - certbot
+    networks:
+      customnetwork:
+        ipv4_address: 172.20.0.2
 
   certbot:
     image: certbot/certbot
     volumes:
       - letsencrypt:/etc/letsencrypt
       - ./webdata:/usr/share/nginx/html
-  
+    networks:
+      customnetwork:
+        ipv4_address: 172.20.0.3
+
   fluentd:
     build:
       context: ./fluentd
@@ -34,7 +39,6 @@ services:
       customnetwork:
         ipv4_address: 172.20.0.10
 
-  
   minio:
     image: quay.io/minio/minio
     volumes:
@@ -43,16 +47,51 @@ services:
       - "9000:9000"
       - "9001:9001"
     env_file: "./env/minio.env"
-    command: server /data 
+    command: server /data
     networks:
       customnetwork:
         ipv4_address: 172.20.0.11
 
+  kafka:
+    image: bitnami/kafka:latest
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+    networks:
+      customnetwork:
+        ipv4_address: 172.20.0.12
+
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      customnetwork:
+        ipv4_address: 172.20.0.13
+
+  kafka-consumer:
+    build:
+      context: ./consumer
+    depends_on:
+      - kafka
+      - minio
+    restart: always
+    networks:
+      customnetwork:
+        ipv4_address: 172.20.0.14
+
 volumes:
   letsencrypt:
-  
+
 networks:
- customnetwork:
-  ipam:
-    config:
-    - subnet: 172.20.0.0/16
+  customnetwork:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
