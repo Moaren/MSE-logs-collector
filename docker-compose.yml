@@ -4,32 +4,34 @@ services:
     volumes:
       - ./nginx-conf:/etc/nginx/templates
       - ./logs/access.log:/var/log/nginx/access.log
-      - letsencrypt:/etc/letsencrypt
+      # - letsencrypt:/etc/letsencrypt
       - ./webdata:/usr/share/nginx/html
     ports:
       - "8080:80"
       - "4443:443"
     env_file: "./env/nginx.env"
-    depends_on:
-      - certbot
+    # depends_on:
+    #   - certbot
     networks:
       customnetwork:
         ipv4_address: 172.20.0.2
 
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - letsencrypt:/etc/letsencrypt
-      - ./webdata:/usr/share/nginx/html
-    networks:
-      customnetwork:
-        ipv4_address: 172.20.0.3
+  # certbot:
+  #   image: certbot/certbot
+  #   volumes:
+  #     - letsencrypt:/etc/letsencrypt
+  #     - ./webdata:/usr/share/nginx/html
+  #   networks:
+  #     customnetwork:
+  #       ipv4_address: 172.20.0.3
 
   fluentd:
     build:
       context: ./fluentd
     volumes:
-      - ./logs/access.log:/var/log/nginx/access.log
+      - type: bind
+        source: ./logs/access.log
+        target: /var/log/nginx/access.log
       - ./fluentd/fluent.conf:/fluentd/etc/fluent.conf
     env_file: "./env/fluentd.env"
     depends_on:
@@ -56,11 +58,14 @@ services:
     image: bitnami/kafka:latest
     ports:
       - "9092:9092"
+    depends_on: 
+      - zookeeper
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
     networks:
       customnetwork:
         ipv4_address: 172.20.0.12
@@ -78,6 +83,9 @@ services:
   kafka-consumer:
     build:
       context: ./consumer
+    volumes:
+      - ./env/consumer.env:/app/env/consumer.env
+      - ./consumer/consumer.py:/app/consumer.py
     depends_on:
       - kafka
       - minio
@@ -85,6 +93,16 @@ services:
     networks:
       customnetwork:
         ipv4_address: 172.20.0.14
+  
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    ports:
+      - "9003:9003"
+    environment:
+      KAFKA_BROKER_CONNECT: "172.20.0.12:9092"
+    networks:
+      customnetwork:
+        ipv4_address: 172.20.0.15
 
 volumes:
   letsencrypt:
@@ -95,3 +113,4 @@ networks:
     ipam:
       config:
         - subnet: 172.20.0.0/16
+

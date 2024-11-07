@@ -2,3 +2,4 @@ FROM fluentd:v1.17.1-debian-1.0
 
 USER root
 RUN gem install fluent-plugin-s3
+RUN gem install fluent-plugin-kafka

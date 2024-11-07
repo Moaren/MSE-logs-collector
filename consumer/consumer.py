@@ -6,8 +6,8 @@ import os
 
 print("Consumer is running...")
 
-#  现在Load环境变量的写法应该还有问题，先不写了
-load_dotenv(dotenv_path="consumer.env")
+load_dotenv(dotenv_path="/app/env/consumer.env")
+
 NEONDB_HOST = os.getenv("NEONDB_HOST")
 NEONDB_USER = os.getenv("NEONDB_USER")
 NEONDB_PASSWORD = os.getenv("NEONDB_PASSWORD")
@@ -48,7 +48,7 @@ def calculate_attack_intensity():
 
         # Reuqest count in one minute
         count += 1
-
+        if time.time() - start_time >= 10: print(count)
         if time.time() - start_time >= 60:
             # Insert the result to NeonDB
             cursor.execute("INSERT INTO attack_intensity (timestamp, intensity) VALUES (%s, %s)", (time.time(), count))
