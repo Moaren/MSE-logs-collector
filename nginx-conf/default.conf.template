@@ -8,16 +8,3 @@ server {
     }
     
 }
-server {
-    listen 443 ssl;
-    server_name ${NGINX_HOST};
-
-    ssl_certificate /etc/letsencrypt/live/${NGINX_HOST}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${NGINX_HOST}/privkey.pem;
-
-    location / {
-        add_header Content-Type text/html;
-
-        return 200 '<html><body>Hello</body></html>';
-    }
-}
